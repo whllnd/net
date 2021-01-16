@@ -15,6 +15,10 @@ int main() {
 	std::cout << "output:" << std::endl;
 	std::cout << output << std::endl;
 
+	//auto backprop(net::backprop(network, output));
+	//std::cout << "backprop:" << std::endl;
+	//std::cout << backprop << std::endl;
+
 	//auto l0(net::get<0>(network));
 	//auto l1(net::get<1>(network));
 

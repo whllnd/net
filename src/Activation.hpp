@@ -3,8 +3,7 @@
 #include <type_traits>
 #include <Eigen/Dense>
 
-namespace net {
-namespace activation {
+namespace net::activation {
 
 class Activation {
 public:
@@ -22,13 +21,16 @@ public:
 class Sigmoid : public Activation {
 public:
 	template<typename InputLayer, typename WeightMatrix>
-	auto operator()(InputLayer const& input,
-	                WeightMatrix const& weights,
-	                float const bias) const {
+	auto static activate(InputLayer const& input,
+	                     WeightMatrix const& weights,
+	                     float const bias) {
 		return bias + 1.f / (1.f + Eigen::exp(-(weights * input).array()));
 	}
 
+	template<typename OutputLayer>
+	auto static derivative(OutputLayer const& output) {
+		return output.array() * (1.f - output).array();
+	}
 };
 
-} // namespace activation
-} // namespace net
+} // namespace net::activation

@@ -6,8 +6,7 @@
 #include "Activation.hpp"
 #include "Layer.hpp"
 
-namespace net {
-namespace layer {
+namespace net::layer {
 
 template<std::size_t nInput, std::size_t nOutput, typename Activation>
 class Dense : public Layer {
@@ -19,28 +18,40 @@ class Dense : public Layer {
 public:
 	Dense(Scalar const bias=0.f)
 		: mBias{bias}
+		, mWeights{Weights::Random()}
+		, mActivation{Output::Zero()}
+	{}
+
+	// @todo: std::enable_if to distinguish simple forwarding from learning
+	auto fwd(Input input) {
+		mActivation = static_cast<Output>(Activation::activate(input, mWeights, mBias));
+		return mActivation;
+	}
+
+	auto backprop(Output output) {
+		return output;
+	}
+
+	// In case of output layer
+	// @todo: std::enable_if to distinguish output layer from hidden layers
+	auto errorForOutputLayer(Output const& expectation) {
+		return (expectation - mActivation) * Activation::derivate(mActivation);
+	}
+
+	auto errorForHiddenLayer(Output const& output)
 	{
-		mWeights = Weights::Random();
+		return 1;
 	}
 
-	//Dense(Dense&& dense)
-	//	: mActivation{/*std::move(*/dense.mActivation/*)*/}
-	//	, mBias{dense.mBias}
-	//	, mWeights{std::move(dense.mWeights)}
-	//{}
-
-	template<typename InputLayer>
-	auto fwd(InputLayer input) const {
-		return Output{mActivation(input, mWeights, mBias)};
-	}
+	//template<typename Error>
+	//auto backprop(Error&& error)
 
 	Weights const& getWeights() const { return mWeights; }
 
 private:
-	Activation mActivation;
 	Scalar mBias;
 	Weights mWeights;
+	Output mActivation;
 };
 
-} // namespace layer
-} // namespace net
+} // namespace net::layer
