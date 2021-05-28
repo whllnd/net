@@ -1,57 +1,40 @@
 #include <iostream>
 #include "Dense.hpp"
 #include "Net.hpp"
+#include "Util.hpp"
 
 int main() {
 
-	net::Net network(net::layer::Dense<3, 4, net::activation::Sigmoid>{},
-	                 net::layer::Dense<4, 6, net::activation::Sigmoid>{},
-	                 net::layer::Dense<6, 3, net::activation::Sigmoid>{});
+	//std::size_t constexpr batch(2);
+	//std::size_t constexpr nIter(5);
+	//nn::Net net(nn::layer::Dense<3, 4, batch>{},
+	//            nn::layer::Dense<4, 4, batch>{},
+	//            nn::layer::Dense<4, 1, batch>{});
 
-	Eigen::Vector3f input;
-	input << 1.f, 2.f, 3.f;
+	//Eigen::Matrix<float, batch, 3> input;
+	//input << 1.f, 2.f, 3.f,
+	//         2.f, 1.f, 3.f;
 
-	auto output(net::fwd(network, input));
-	std::cout << "output:" << std::endl;
-	std::cout << output << std::endl;
+	//Eigen::Matrix<float, batch, 1> labels;
+	//labels << 1.f,
+	//          2.f;
 
-	//auto backprop(net::backprop(network, output));
-	//std::cout << "backprop:" << std::endl;
-	//std::cout << backprop << std::endl;
+	//nn::train(net, input, labels, nIter);
 
-	//auto l0(net::get<0>(network));
-	//auto l1(net::get<1>(network));
+	std::size_t constexpr batch(25); // @todo: Make it sane
+	std::size_t constexpr nIter(1);
+	nn::Net net(nn::layer::Dense<784, 256, batch>{},
+	            nn::layer::Dense<256, 128, batch>{},
+	            nn::layer::Dense<128, 32, batch>{},
+	            nn::layer::Dense<32, 1, batch>{});
 
-	//auto o0(l0.forwardPass(input));
-	//auto o1(l1.forwardPass(o0));
-	//std::cout << o0 << std::endl;
-
-	//auto layer(net::get<0>(network));
-	//auto output(layer.forwardPass(input));
-	//std::cout << "output:" << std::endl;
-	//std::cout << output << std::endl;
-	//std::cout << network.numLayers() << std::endl;
-
-	//auto l1(net::get<0>(network));
-	//auto l2(net::get<1>(network));
-	//auto l3(net::get<2>(network));
-	//std::cout << l1.forwardPass(input) << std::endl;
-
-	//auto out(net::forwardPass<3>(network, input));
-	//std::cout << out << std::endl;
-
-	//Input input;
-	//input << 1, 2, 3;
-
-	//Output output = dense.forwardPass(input);
-	//std::cout << output << std::endl;
-
-	//net::Net<typename net::layer::Dense<Input, Output, typename net::activation::Sigmoid<Input, Output>>, 2> net{d1, d2};
-	//Layer<4>(net::layer::type::Dense)};
-	//
-	//std::cout << net.getLayers().size() << std::endl;
-
-	//net::Net<Dense<Input, Output>, Dense<Output, Input>
-
-	//auto output(net.pass(input));
+	for (auto i(0); i < 50; ++i) {
+		std::ifstream file("/home/per/Code/net/data/mnist_test.csv");
+		for (auto i(0); i < 200; ++i) {
+			auto [data, labels](nn::util::getMNISTImageBatch<batch>(file));
+			data = data.array() / 255.f;
+			labels = labels.array() / 9.f;
+			nn::train(net, data, labels, nIter);
+		}
+	}
 }

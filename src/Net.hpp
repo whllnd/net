@@ -1,36 +1,12 @@
 #pragma once
 
-#include "Layer.hpp"
-
 #include <type_traits>
 
-namespace net {
+namespace nn {
 
-enum class LayerType {
-	Hidden,
-	Output
-};
-
-// @todo: Get rid of code duplicates
+// Net itself based on std::tuple-esque recursion -----------------------------
 template<typename... Layers>
 class Net{};
-
-template<typename Layer>
-class Net<Layer> : public Net<> {
-public:
-	Net(Layer layer)
-		: Net<>()
-		, mLayer{layer}
-	{}
-
-	Layer const& layer() const { return mLayer; }
-	Layer& layer() { return mLayer; }
-	LayerType type() const { return mType; }
-
-private:
-	Layer mLayer;
-	LayerType mType{LayerType::Output};
-};
 
 template<typename Layer, typename... Layers>
 class Net<Layer, Layers...> : public Net<Layers...> {
@@ -42,18 +18,16 @@ public:
 
 	Layer const& layer() const { return mLayer; }
 	Layer& layer() { return mLayer; }
-	LayerType type() const { return mType; }
 
 private:
 	Layer mLayer;
-	LayerType mType{LayerType::Hidden};
 };
 
 // Enable automatic template deduction (I have no idea why this works ...)
 template<typename... Layers>
 Net(Layers... layers) -> Net<Layers...>;
 
-// Layer access
+// Layer access ---------------------------------------------------------------
 template<std::size_t, typename>
 struct ElemType;
 
@@ -67,45 +41,66 @@ struct ElemType<i, Net<Layer, Layers...>> {
 	typedef typename ElemType<i - 1, Net<Layers...>>::type type;
 };
 
-template<std::size_t i, typename... Layers>
-typename std::enable_if<0 == i, typename ElemType<i, Net<Layers...>>::type&>::type get(Net<Layers...>& net) {
-	return net.layer(); //mLayer;
-}
-
 template<std::size_t i, typename Layer, typename... Layers>
-typename std::enable_if<0 != i, typename ElemType<i, Net<Layer, Layers...>>::type&>::type get(Net<Layer, Layers...>& net) {
-	Net<Layers...>& base(net);
-	return get<i - 1>(base);
+auto get(Net<Layer, Layers...>& net) {
+	if constexpr (i) {
+		Net<Layers...>& base(net);
+		return get<i - 1>(base);
+	} else {
+		return net.layer();
+	}
 }
 
-// Forward pass
-// @todo: Add const qualifiers once I figured out how to distinguish
-// simple forwarding from learning process
-template<typename Input, typename Layer>
-auto fwd(Net<Layer>& net, Input const& input) {
-	std::cout << "fwd<>    Type: " << static_cast<int>(net.type()) << std::endl;
+// Train ----------------------------------------------------------------------
+template<typename Net, typename X, typename Y>
+void train(Net& net, X const& x, Y const& y, std::size_t const nIter) {
+	for (std::size_t i(0); i < nIter; ++i) {
+		std::cout << "---" << std::endl;
+		std::cout << "labels: " << y.transpose() << std::endl;
+		train(net, x.transpose(), y.transpose());
+	}
+}
+
+template<typename X, typename Y, typename Layer, typename... Layers>
+auto train(Net<Layer, Layers...>& net, X const& x, Y const& y) {
+	// Layer specific types
+	//using Input = typename Layer::Input;
+	//using Output = typename Layer::Output;
+	using Activation = typename Layer::Activate;
+
+	// Forward pass
+	auto& layer(net.layer());
+	//Output const input(layer.bias().array() + (layer.weights() * x).array());
+	//Output const activation(Activation::activate(input));
+	Eigen::MatrixXf const input(layer.bias().array() + (layer.weights() * x).array());
+	Eigen::MatrixXf const activation(Activation::activate(input));
+
+	// Backpropagation
+	//Output delta;
+	Eigen::MatrixXf delta;
+	if constexpr (sizeof...(Layers)) {
+		Net<Layers...>& next(net);
+		delta = train(next, activation, y).array() * Activation::derivative(activation).array();
+	} else {
+		delta = (activation - y).array() * Activation::derivative(activation).array();
+		std::cout << "output: " << activation << std::endl;
+		std::cout << "delta:  " << delta.array().sum() << std::endl;
+	}
+
+	//Input wd(layer.weights().transpose() * delta);
+	Eigen::MatrixXf wd(layer.weights().transpose() * delta);
+	layer.weights() = layer.weights().array() - 1.f * (delta * x.transpose()).array();
+	return wd;
+}
+
+// Simple forward pass --------------------------------------------------------
+template<typename Input, typename Layer, typename... Layers>
+auto fwd(Net<Layer, Layers...>& net, Input const& input) {
+	Net<Layers...>& next(net);
+	if constexpr (sizeof...(Layers)) {
+		return fwd(next, net.layer().fwd(input));
+	}
 	return net.layer().fwd(input);
 }
 
-template<typename Input, typename Layer, typename... Layers>
-auto fwd(Net<Layer, Layers...>& net, Input const& input) {
-	std::cout << "fwd<...> Type: " << static_cast<int>(net.type()) << std::endl;
-	Net<Layers...>& next(net);
-	return fwd(next, net.layer().fwd(input));
-}
-
-// Backpropagation
-template<typename Output, typename Layer>
-auto backprop(Net<Layer>& net, Output const& output) {
-	std::cout << "backprop<>    Type: " << static_cast<int>(net.type()) << std::endl;
-	return net.layer().backprop(output);
-}
-
-template<typename Output, typename Layer, typename... Layers>
-auto backprop(Net<Layer, Layers...>& net, Output const& output) {
-	std::cout << "backprop<...> Type: " << static_cast<int>(net.type()) << std::endl;
-	Net<Layers...>& next(net);
-	return net.layer().backprop(backprop(next, output));
-}
-
-} // namespace net
+} // namespace nn

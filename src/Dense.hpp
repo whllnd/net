@@ -6,52 +6,46 @@
 #include "Activation.hpp"
 #include "Layer.hpp"
 
-namespace net::layer {
+namespace nn::layer {
 
-template<std::size_t nInput, std::size_t nOutput, typename Activation>
-class Dense : public Layer {
-	using Scalar = float;
-	using Input = typename Eigen::Matrix<Scalar, nInput, 1>;
-	using Output = typename Eigen::Matrix<Scalar, nOutput, 1>;
-	using Weights = typename Eigen::Matrix<Scalar, nOutput, nInput>;
-
+template<std::size_t nInput, std::size_t nOutput, std::size_t nBatch=1, typename Activation=activation::Sigmoid>
+class Dense {
 public:
-	Dense(Scalar const bias=0.f)
-		: mBias{bias}
-		, mWeights{Weights::Random()}
-		, mActivation{Output::Zero()}
+	using Scalar = float;
+	using Input = typename Eigen::Matrix<Scalar, nInput, nBatch>;
+	using Output = typename Eigen::Matrix<Scalar, nOutput, nBatch>;
+	using Weights = typename Eigen::Matrix<Scalar, nOutput, nInput>;
+	using Activate = Activation; // @todo: More elegant solution ...
+
+	//Dense(Output const& bias=Output::Zero())
+	//	: mWeights{Weights::Random()} // @todo: Make it cool
+	//	, mBias{bias}
+	//{}
+	Dense(Eigen::MatrixXf const& bias=Eigen::MatrixXf::Zero(nOutput, nBatch))
+		: mWeights{Eigen::MatrixXf::Random(nOutput, nInput)}
+		, mBias{bias}
 	{}
 
-	// @todo: std::enable_if to distinguish simple forwarding from learning
-	auto fwd(Input input) {
-		mActivation = static_cast<Output>(Activation::activate(input, mWeights, mBias));
-		return mActivation;
+	//auto fwd(Input const& input) {
+	Eigen::MatrixXf fwd(Eigen::MatrixXf const& input) {
+		return Activation::activate(mBias.array() + (mWeights * input).array());
 	}
 
-	auto backprop(Output output) {
-		return output;
-	}
+	//Output const& bias() const { return mBias; }
+	//Output& bias() { return mBias; }
+	Eigen::MatrixXf const& bias() const { return mBias; }
+	Eigen::MatrixXf& bias() { return mBias; }
 
-	// In case of output layer
-	// @todo: std::enable_if to distinguish output layer from hidden layers
-	auto errorForOutputLayer(Output const& expectation) {
-		return (expectation - mActivation) * Activation::derivate(mActivation);
-	}
-
-	auto errorForHiddenLayer(Output const& output)
-	{
-		return 1;
-	}
-
-	//template<typename Error>
-	//auto backprop(Error&& error)
-
-	Weights const& getWeights() const { return mWeights; }
+	//Weights const& weights() const { return mWeights; }
+	//Weights& weights() { return mWeights; }
+	Eigen::MatrixXf const& weights() const { return mWeights; }
+	Eigen::MatrixXf& weights() { return mWeights; }
 
 private:
-	Scalar mBias;
-	Weights mWeights;
-	Output mActivation;
+	//Weights mWeights;
+	//Output mBias;
+	Eigen::MatrixXf mWeights;
+	Eigen::MatrixXf mBias;
 };
 
-} // namespace net::layer
+} // namespace nn::layer

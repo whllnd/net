@@ -3,8 +3,7 @@
 #include <Eigen/Dense>
 #include <memory>
 
-namespace net {
-namespace layer {
+namespace nn::layer {
 
 class Layer {
 public:
@@ -47,5 +46,4 @@ public:
 //	std::shared_ptr<Concept const> mLayer;
 //};
 
-} // namespace layer
-} // namespace net
+} // namespace nn::layer
